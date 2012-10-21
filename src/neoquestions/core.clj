@@ -31,7 +31,7 @@
 
 (defn insert-question 
   [q]
-  ;(println (str "inserting" q))
+  (println (str "inserting" q))
   (try
     (invoke-with-connection 
       (fn [] (sql/insert-record "questions" 
@@ -56,7 +56,7 @@
   (let [a-day-ago (- (int (/ (.getTime (java.util.Date.)) 1000)) (* 60 60 24))
         response (client/get (str "https://api.stackexchange.com/2.1/search?fromdate=" a-day-ago "&order=asc&sort=creation&tagged=neo4j&site=stackoverflow"))
         questions (get (parse-string (:body response)) "items")]
-    (insert-question (first questions))))
+    (doseq [q questions] (insert-question q))))
 
 (defn tweet-question
   [question]
