@@ -5,7 +5,8 @@
             [oauth.client :as oauth]
             [twitter :as twitter]
             [clojure.java.io :as io])
-  (:import [java.io PushbackReader]))
+  (:import [java.io PushbackReader])
+  (:import [org.apache.commons.lang3 StringEscapeUtils]))
 
 (def dbspec {:classname "org.sqlite.JDBC"
              :subprotocol "sqlite"
@@ -31,7 +32,7 @@
 
 (defn insert-question 
   [q]
-  (println (str "inserting" q))
+  ;(println (str "inserting" q))
   (try
     (invoke-with-connection 
       (fn [] (sql/insert-record "questions" 
@@ -53,18 +54,19 @@
 
 (defn fetch-latest-questions
   []
-  (let [a-day-ago (- (int (/ (.getTime (java.util.Date.)) 1000)) (* 60 60 24))
+  (let [a-day-ago (- (int (/ (System/currentTimeMillis) 1000)) (* 60 60 24))
         response (client/get (str "https://api.stackexchange.com/2.1/search?fromdate=" a-day-ago "&order=asc&sort=creation&tagged=neo4j&site=stackoverflow"))
         questions (get (parse-string (:body response)) "items")]
     (doseq [q questions] (insert-question q))))
 
 (defn tweet-question
   [question]
-  (let [tweet (str 
+  (let [title (StringEscapeUtils/unescapeHtml4 (:title question))
+        tweet (str 
                 \"
-                (if (> (count (:title question)) 100)
-                    (str (subs (:title question) 0 100) "...")
-                    (:title question))
+                (if (> (count title) 100)
+                    (str (subs title 0 100) "...")
+                    title)
                 "\" #neo4j " 
                 (:link question))]
     (println tweet)
@@ -79,7 +81,7 @@
   []
   (let [rs (invoke-with-connection
              (fn [] (sql/with-query-results rs 
-                                            ["select * from questions where tweeted=0 limit 1"] rs)))]
+                                            ["select * from questions where tweeted=0"] rs)))]
     (doseq [row rs] (tweet-question row))))
 
 (defn -main
