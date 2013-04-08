@@ -87,7 +87,9 @@
 (defn -main
   [& args]
   (while true
-    (fetch-latest-questions)
-    (tweet-questions)
+    (try
+      (fetch-latest-questions)
+      (tweet-questions)
+      (catch Exception e (println "Exception: " e)))
     (Thread/sleep (* 1000 600)))
 )
